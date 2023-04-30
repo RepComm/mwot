@@ -86,6 +86,26 @@ async function main() {
     minHeight: "0",
     maxHeight: "100%"
   }).mount(hSplit).e;
+
+  //make this work app on mobile, canvas can't pull up mobile keyboard.
+  const mobileCapableTypeArea = ui.create("input", "mobile-capable-type-area")
+  .style({flex: "1"})
+  .mount(hSplit)
+  .on("change", (evt)=>{
+    let v = mobileCapableTypeArea.value;
+    mobileCapableTypeArea.value = "";
+
+    for (let i=0; i<v.length; i++) {
+      keyDownHandler({
+        key: v[i]
+      });
+    }
+  })
+  .on("click", (evt)=>{
+    canvasFocus = false;
+  })
+  .e;
+
   const ctx = canvas.getContext("2d");
 
   const scene = new Object2D();
@@ -155,6 +175,7 @@ async function main() {
   };
 
   ui.ref(canvas).on("click", (evt) => {
+    canvasFocus = true;
     //get offset of mouse from canvas top left pixels
     mPosCanvasOffset.set(evt.offsetX, evt.offsetY);
 
@@ -173,12 +194,10 @@ async function main() {
     r.h = TextChunk.CHAR_HEIGHT * TextChunk.metricsLineHeight;
   });
 
-  window.addEventListener("keypress", ()=>{
-
-  });
-  window.addEventListener("keydown", (evt)=>{
-    // console.log(evt);
+  const keyDownHandler = (evt: {key: string})=>{
     const { key } = evt;
+    // console.log(key);
+
     switch (key) {
       case "ArrowRight":
         cursor.addTextPos(1, 0);
@@ -203,11 +222,26 @@ async function main() {
         cursor.addTextPos(1, 0);
         //TODO - handle space
         break;
+      case "Shift":
+      case "Control":
+      case "CapsLock":
+        //do nothing
+        break;
+      case "Tab":
+        cursor.addTextPos(2, 0);
+        break;
       default:
-        
+      cursor.addTextPos(1, 0);
+        //TODO - handle type char
         break;
     }
+  };
 
+  let canvasFocus = true;
+
+  window.addEventListener("keydown", (evt)=>{
+    if (!canvasFocus) return;
+    keyDownHandler(evt);
   });
 
   const tryRender = () => {
