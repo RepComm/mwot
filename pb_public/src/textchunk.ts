@@ -1,5 +1,5 @@
 
-import { Object2D } from "@repcomm/scenario2d";
+import { Object2D, Vec2 } from "@repcomm/scenario2d";
 
 export class TextChunk extends Object2D {
   /**Number of chars wide max*/
@@ -56,6 +56,9 @@ export class TextChunk extends Object2D {
   getIndexStr() {
     return `${this.cx}:${this.cy}`;
   }
+  static getIndexStr (cx: number, cy: number) {
+    return `${cx}:${cy}`;
+  }
   calcRenderPos() {
     let x = (TextChunk.metricsMonoWidth * TextChunk.CHAR_WIDTH) * this.cx;
     let y = (TextChunk.metricsLineHeight * TextChunk.CHAR_HEIGHT) * this.cy;
@@ -88,10 +91,32 @@ export class TextChunk extends Object2D {
     }
     return this;
   }
+  static isLoaded (cx: number, cy: number) {
+    const indexStr = TextChunk.getIndexStr(cx, cy);
+    return TextChunk.tracked.has(indexStr);
+  }
   static tryLoad (cx: number, cy: number): TextChunk {
+    if (TextChunk.isLoaded(cx, cy)) return;
+
     let result = new TextChunk(cx, cy);
     TextChunk.tracked.set(result.getIndexStr() , result);
+    result.subscribe();
     return result;
+  }
+  static tryUnload (cx: number, cy: number) {
+    let indexStr = TextChunk.getIndexStr(cx, cy);
+    let chunk = TextChunk.tracked.get(indexStr);
+    if (!chunk) return;
+    TextChunk.tracked.delete(indexStr);
+    chunk.removeSelf();
+    chunk.unsubscribe();
+  }
+  unsubscribe () {
+    //TODO - handle database unsubscribe
+  }
+  subscribe () {
+    //TODO - handle database subscribe
+    this.src = "0123456789abcdef\n0123456789abcdef\n0123456789abcdef\n0123456789abcdef\n0123456789abcdef\n0123456789abcdef\n0123456789abcdef\n0123456789abcdef";
   }
 }
 TextChunk.CHAR_HEIGHT = 8;

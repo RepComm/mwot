@@ -194,6 +194,67 @@ async function main() {
     r.h = TextChunk.CHAR_HEIGHT * TextChunk.metricsLineHeight;
   });
 
+  function isChunkVisible (cx: number, cy: number) {
+    const p = loopVisibleChunksPos;
+    const min = loopVisibleChunksMin;
+    const max = loopVisibleChunksMax;
+    
+    p.copy(scene.localTransform.position);
+
+    pos.canvas.to.chunkIndex(p, min);
+    p.x += canvas.width;
+    p.y += canvas.height;
+    pos.canvas.to.chunkIndex(p, max);
+
+    return (
+      cx >= min.x && cx <= max.x &&
+      cy >= min.y && cy <= max.y
+    );
+  }
+
+  const loopVisibleChunksPos = new Vec2();
+  const loopVisibleChunksMin = new Vec2();
+  const loopVisibleChunksMax = new Vec2();
+  function loopVisibleChunks (cb: (p: Vec2)=> void) {
+    const p = loopVisibleChunksPos;
+    const min = loopVisibleChunksMin;
+    const max = loopVisibleChunksMax;
+    
+    p.copy(scene.localTransform.position);
+
+    pos.canvas.to.chunkIndex(p, min);
+    p.x += canvas.width;
+    p.y += canvas.height;
+    pos.canvas.to.chunkIndex(p, max);
+
+    for (let x=min.x; x<max.x+1; x++) {
+      for (let y=min.y; y<max.y+1; y++) {
+        p.x = x;
+        p.y = y;
+        cb(p);
+      }
+    }
+  }
+
+  function populateVisibleChunks () {
+    for (let [index, ch] of TextChunk.tracked) {
+      if (isChunkVisible(ch.cx, ch.cy)) continue;
+      console.log("unloading", ch.cx, ch.cy);
+      TextChunk.tryUnload(ch.cx, ch.cy);
+    }
+    loopVisibleChunks((c)=>{
+      let ch = TextChunk.tryLoad(c.x, c.y);
+      if (ch) {
+        scene.add(ch);
+        console.log("loading", c.x, c.y);
+      }
+    })
+  }
+
+  setInterval(()=>{
+    populateVisibleChunks();
+  }, 1000);
+
   const keyDownHandler = (evt: {key: string})=>{
     const { key } = evt;
     // console.log(key);
