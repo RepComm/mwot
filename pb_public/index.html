@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    
+    <!--Polyfill for using import maps (in my case for firefox)-->
+    <script async src="./es-module-shims.js"></script>
+
+    <!--Map my own depednecy to its node_modules location, you can do this for other deps too!-->
+    <script type="importmap">
+    {
+      "imports": {
+        "@roguecircuitry/htmless": "./node_modules/@roguecircuitry/htmless/mod.js",
+        "@repcomm/scenario2d": "./node_modules/@repcomm/scenario2d/mod.js",
+        "pocketbase": "./node_modules/pocketbase/dist/pocketbase.es.mjs"
+      }
+    }
+    </script>
+  </head>
+  <body>
+    <script type="module" src="./index.js"></script>
+  </body>
+</html>
