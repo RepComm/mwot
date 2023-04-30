@@ -1,151 +1,39 @@
 import { Object2D, Vec2 } from "@repcomm/scenario2d";
 import { exponent, UIBuilder } from "@roguecircuitry/htmless";
+import { TextChunk } from "./textchunk.js";
+import { Cursor } from "./cursor.js";
 import PocketBase from "pocketbase";
 const pbUrl = `${window.location.protocol}//${window.location.hostname}:${window.location.port}`;
-console.log(pbUrl);
 const pb = new PocketBase(pbUrl);
-export class TextChunk extends Object2D {
-  /**Number of chars wide max*/
-
-  /**Number of chars tall max*/
-
-  /**database record ID*/
-
-  /**Set the source text
-   * Automatically trims lines that are longer than TextChunk.WIDTH
-   * Automatically trims line count to be at most TextChunk.CHAR_HEIGHT
-   * Stores baked version of lines for easy rendering
-  */
-  set src(s) {
-    this._lines = s.split("\n", TextChunk.CHAR_HEIGHT);
-    let changed = false;
-    for (let i = 0; i < this._lines.length; i++) {
-      let line = this._lines[i];
-      if (line.length > TextChunk.CHAR_WIDTH) {
-        line = line.substring(0, TextChunk.CHAR_WIDTH);
-        this._lines[i] = line;
-        changed = true;
+function isLoggedIn() {
+  return pb.authStore.isValid;
+}
+async function main() {
+  const pos = {
+    canvas: {
+      to: {
+        textIndex(v, out, floor = true) {
+          out.copy(v);
+          out.divScalar(scene.localTransform.scale);
+          out.x /= TextChunk.metricsMonoWidth;
+          out.y /= TextChunk.metricsLineHeight;
+          if (floor) {
+            out.x = Math.floor(out.x);
+            out.y = Math.floor(out.y);
+          }
+        },
+        chunkIndex(v, out, floor = true) {
+          pos.canvas.to.textIndex(v, out, false);
+          out.x /= TextChunk.CHAR_WIDTH;
+          out.y /= TextChunk.CHAR_HEIGHT;
+          if (floor) {
+            out.x = Math.floor(out.x);
+            out.y = Math.floor(out.y);
+          }
+        }
       }
     }
-    if (changed) {
-      this._src = this._lines.join("\n");
-    } else {
-      this._src = s;
-    }
-  }
-  get src() {
-    return this._src;
-  }
-  constructor(cx = 0, cy = 0) {
-    super();
-    this.setIndex(cx, cy);
-  }
-  getIndexStr() {
-    return `${this.cx}:${this.cy}`;
-  }
-  calcRenderPos() {
-    let x = TextChunk.metricsMonoWidth * TextChunk.CHAR_WIDTH * this.cx;
-    let y = TextChunk.metricsLineHeight * TextChunk.CHAR_HEIGHT * this.cy;
-    this.localTransform.position.set(x, y);
-    this.needsCalcRenderPos = false;
-  }
-  setIndex(cx, cy) {
-    this.cx = cx;
-    this.cy = cy;
-    this.needsCalcRenderPos = true;
-  }
-  onRenderSelf(ctx) {
-    let x = 0;
-    let y = 0;
-    if (!TextChunk.metrics) {
-      TextChunk.metrics = ctx.measureText("A");
-      TextChunk.metricsLineHeight = TextChunk.metrics.fontBoundingBoxAscent + TextChunk.metrics.fontBoundingBoxDescent;
-      TextChunk.metricsMonoWidth = TextChunk.metrics.width;
-    }
-    if (this.needsCalcRenderPos) this.calcRenderPos();
-    for (let line of this._lines) {
-      y += TextChunk.metricsLineHeight;
-      if (!line) continue;
-      ctx.fillText(line, x, y);
-    }
-    return this;
-  }
-  static tryLoad(cx, cy) {
-    let result = new TextChunk(cx, cy);
-    TextChunk.tracked.set(result.getIndexStr(), result);
-    return result;
-  }
-}
-TextChunk.CHAR_HEIGHT = 8;
-TextChunk.CHAR_WIDTH = 16;
-TextChunk.tracked = new Map();
-export class Cursor extends Object2D {
-  /**Database record id*/
-
-  get tx() {
-    return this._tx;
-  }
-  get ty() {
-    return this._ty;
-  }
-  setTextPos(tx, ty, lineStart = false) {
-    if (tx !== undefined) this._tx = tx;
-    if (ty !== undefined) this._ty = ty;
-    if (lineStart) this._lastLineStartX = this._tx;
-    this.needsCalcRenderPos = true;
-  }
-  addTextPos(tx = 1, ty = 0) {
-    this.setTextPos(this._tx + tx, this._ty + ty);
-  }
-  newLine() {
-    this.setTextPos(this._lastLineStartX, this._ty + 1, true);
-  }
-  tryCalcRenderPos() {
-    if (!TextChunk.metricsMonoWidth) return; //needs to render a chunk first to get metrics info
-
-    let x = TextChunk.metricsMonoWidth * this._tx;
-    let y = TextChunk.metricsLineHeight * this._ty;
-    this.actualLocalPos.set(x, y);
-    this.needsCalcRenderPos = false;
-  }
-  constructor(x = 0, y = 0) {
-    super();
-    this.actualLocalPos = new Vec2();
-    this.lerpRate = 0.5;
-    this.setTextPos(x, y, true);
-  }
-  onRenderSelf(ctx) {
-    if (this.needsCalcRenderPos) this.tryCalcRenderPos();
-    this.localTransform.position.lerp(this.actualLocalPos, this.lerpRate); //animate instead of jumping
-
-    ctx.strokeRect(0, 0, TextChunk.metricsMonoWidth, TextChunk.metricsLineHeight);
-    return this;
-  }
-}
-Cursor.tracked = new Map();
-async function main() {
-  function isLoggedIn() {
-    return pb.authStore.isValid;
-  }
-  function canvasToTextIndex(v, out, floor = true) {
-    out.copy(v);
-    out.divScalar(scene.localTransform.scale);
-    out.x /= TextChunk.metricsMonoWidth;
-    out.y /= TextChunk.metricsLineHeight;
-    if (floor) {
-      out.x = Math.floor(out.x);
-      out.y = Math.floor(out.y);
-    }
-  }
-  function canvasToChunkIndex(v, out, floor = true) {
-    canvasToTextIndex(v, out, false);
-    out.x /= TextChunk.CHAR_WIDTH;
-    out.y /= TextChunk.CHAR_HEIGHT;
-    if (floor) {
-      out.x = Math.floor(out.x);
-      out.y = Math.floor(out.y);
-    }
-  }
+  };
   let userData;
   async function login(uname, upass) {
     pb.collection("users").authWithPassword(uname, upass).then(record => {
@@ -229,10 +117,11 @@ async function main() {
   scene.add(cursor);
 
   /**Mouse position in canvas element offset*/
-  const mousePos = new Vec2();
-  /**Mouse position in text coordinates*/
-  const mouseTextPos = new Vec2();
-  const mouseChunkPos = new Vec2();
+  const mPosCanvasOffset = new Vec2();
+  /**Mouse position in text index space*/
+  const mPosText = new Vec2();
+  /**Mouse position in chunk index space*/
+  const mPosChunk = new Vec2();
   const r = {
     x: 0,
     y: 0,
@@ -244,14 +133,50 @@ async function main() {
     return this;
   };
   ui.ref(canvas).on("click", evt => {
-    mousePos.set(evt.offsetX, evt.offsetY);
-    canvasToTextIndex(mousePos, mouseTextPos);
-    canvasToChunkIndex(mousePos, mouseChunkPos);
-    r.x = mouseChunkPos.x;
-    r.y = mouseChunkPos.y;
+    //get offset of mouse from canvas top left pixels
+    mPosCanvasOffset.set(evt.offsetX, evt.offsetY);
+
+    //convert to text column, row
+    pos.canvas.to.textIndex(mPosCanvasOffset, mPosText);
+    //convert to chunk column, row
+    pos.canvas.to.chunkIndex(mPosCanvasOffset, mPosChunk);
+
+    //set our cursor position
+    cursor.setTextPos(mPosText.x, mPosText.y, true);
+
+    //demo render code for chunk border
+    r.x = mPosChunk.x;
+    r.y = mPosChunk.y;
     r.w = TextChunk.CHAR_WIDTH * TextChunk.metricsMonoWidth;
     r.h = TextChunk.CHAR_HEIGHT * TextChunk.metricsLineHeight;
-    cursor.setTextPos(mouseTextPos.x, mouseTextPos.y, true);
+  });
+  window.addEventListener("keypress", () => {});
+  window.addEventListener("keydown", evt => {
+    console.log(evt);
+    const {
+      key
+    } = evt;
+    switch (key) {
+      case "ArrowRight":
+        cursor.addTextPos(1, 0);
+        break;
+      case "ArrowLeft":
+        cursor.addTextPos(-1, 0);
+        break;
+      case "ArrowUp":
+        cursor.addTextPos(0, -1);
+        break;
+      case "ArrowDown":
+        cursor.addTextPos(0, 1);
+        break;
+      case "Enter":
+        cursor.newLine();
+        break;
+      case "Backspace":
+        cursor.addTextPos(-1, 0, true);
+        //TODO - handle backspace
+        break;
+    }
   });
   const tryRender = () => {
     window.requestAnimationFrame(tryRender);
