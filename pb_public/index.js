@@ -1,14 +1,10 @@
 import { Object2D, Vec2 } from "@repcomm/scenario2d";
 import { exponent, UIBuilder } from "@roguecircuitry/htmless";
-import { TextChunk } from "./textchunk.js";
 import { Cursor } from "./cursor.js";
-import PocketBase from "pocketbase";
-const pbUrl = `${window.location.protocol}//${window.location.hostname}:${window.location.port}`;
-const pb = new PocketBase(pbUrl);
-function isLoggedIn() {
-  return pb.authStore.isValid;
-}
+import { TextChunk } from "./textchunk.js";
+import { db } from "./db.js";
 async function main() {
+  db.init();
   const pos = {
     canvas: {
       to: {
@@ -32,22 +28,21 @@ async function main() {
           }
         }
       }
+    },
+    text: {
+      to: {
+        chunkIndex(v, out, floor = true) {
+          // pos.canvas.to.textIndex(v, out, false);
+          out.x /= TextChunk.CHAR_WIDTH;
+          out.y /= TextChunk.CHAR_HEIGHT;
+          if (floor) {
+            out.x = Math.floor(out.x);
+            out.y = Math.floor(out.y);
+          }
+        }
+      }
     }
   };
-  let userData;
-  async function login(uname, upass) {
-    pb.collection("users").authWithPassword(uname, upass).then(record => {
-      userData = record;
-      console.log("Login result", userData);
-      alert("Successfully logged in");
-
-      // pb.collection("cursors").getList<CursorJson>(0, 10, {
-      //   filter: `created<${}`
-      // })
-    }).catch(reason => {
-      alert(reason);
-    });
-  }
   const ui = new UIBuilder();
   ui.default(exponent);
   ui.create("div").id("container").mount(document.body);
@@ -57,13 +52,13 @@ async function main() {
   }).mount(container).e;
   const menuBar = ui.create("div", "menubar").mount(hSplit).e;
   const authButton = ui.create("button", "auth").textContent("Authenticate").mount(menuBar).on("click", () => {
-    if (isLoggedIn()) {
+    if (db.isLoggedIn()) {
       alert("already logged in");
       return;
     }
     let uname = prompt("Enter username");
     let upass = prompt("Enter password");
-    login(uname, upass);
+    db.login(uname, upass);
   });
   const canvas = ui.create("canvas").style({
     flex: "20",
@@ -92,11 +87,11 @@ async function main() {
   let time_last = 0;
   let time_now = 0;
   let time_delta = 0;
-  let target_fps = 30;
+  let target_fps = 15;
   let time_min = 1000 / target_fps;
   let fps = 0;
   let chunk = TextChunk.tryLoad(0, 0);
-  chunk.src = "Hey\nWhats up\nMultiple lines!\nA really really long line\nEtc";
+  chunk._src = "Hey Whats up Multiple lines! A really really long line Etc";
   scene.add(chunk);
   let viewWidth = TextChunk.CHAR_WIDTH * 2;
   let fontSize = 1;
@@ -214,6 +209,20 @@ async function main() {
   setInterval(() => {
     populateVisibleChunks();
   }, 1000);
+  const tryTypeVec = new Vec2();
+  function tryType(tx, ty, ch) {
+    tryTypeVec.set(tx, ty);
+    pos.text.to.chunkIndex(tryTypeVec, tryTypeVec);
+    let cx = tryTypeVec.x;
+    let cy = tryTypeVec.y;
+    let chunk = TextChunk.getLoaded(cx, cy);
+    if (chunk === undefined) return;
+    const column = tx % TextChunk.CHAR_WIDTH;
+    const row = ty % TextChunk.CHAR_HEIGHT;
+    const idx = TextChunk._2dTo1d(column, row, TextChunk.CHAR_WIDTH);
+    chunk._bin[idx] = ch.charCodeAt(0);
+    chunk._srcFromBin();
+  }
   const keyDownHandler = evt => {
     const {
       key
@@ -237,6 +246,7 @@ async function main() {
         cursor.newLine();
         break;
       case "Backspace":
+        tryType(cursor.tx, cursor.ty, " ");
         cursor.addTextPos(-1, 0, true);
         //TODO - handle backspace
         break;
@@ -253,6 +263,7 @@ async function main() {
         cursor.addTextPos(2, 0);
         break;
       default:
+        tryType(cursor.tx, cursor.ty, key);
         cursor.addTextPos(1, 0);
         //TODO - handle type char
         break;

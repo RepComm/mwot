@@ -46,7 +46,6 @@ export class Cursor extends Object2D {
     this.actualLocalPos.set(x, y);
     this.needsCalcRenderPos = false;
   }
-
   constructor(x: number = 0, y: number = 0) {
     super();
     this.actualLocalPos = new Vec2();
