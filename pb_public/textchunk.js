@@ -32,6 +32,8 @@ export class TextChunk extends Object2D {
   }
   _binInit() {
     this._bin = new Uint8Array(TextChunk.CHAR_WIDTH * TextChunk.CHAR_HEIGHT);
+    this._sendTimeLast = performance.now();
+    this._needsSent = false;
     this._binClear();
   }
   _srcFromBin() {
@@ -79,7 +81,7 @@ export class TextChunk extends Object2D {
     if (this.needsCalcRenderPos) this.calcRenderPos();
     let ch;
     let chb;
-    for (let i = 0; i < this._bin.byteLength - 1; i++) {
+    for (let i = 0; i < this._bin.byteLength; i++) {
       chb = this._bin[i];
       ch = String.fromCharCode(chb);
       x = TextChunk._1dTo2dX(i, TextChunk.CHAR_WIDTH) * TextChunk.metricsMonoWidth;
@@ -88,6 +90,7 @@ export class TextChunk extends Object2D {
       // y = Math.floor(TextChunk._1dTo2dY(i, TextChunk.CHAR_WIDTH) * TextChunk.metricsLineHeight);
       ctx.fillText(ch, x, y);
     }
+    if (this._needsSent) this.trySend();
     return this;
   }
   static isLoaded(cx, cy) {
@@ -117,24 +120,49 @@ export class TextChunk extends Object2D {
     //TODO - handle database unsubscribe
     if (this.id) db.ctx.collection("chunks").unsubscribe(this.id);
   }
-  subscribe() {
-    //TODO - handle database subscribe
+  async subscribe(id = undefined) {
+    if (id !== undefined) this.id = id;
 
-    db.ctx.collection("chunks").getFirstListItem(`cx = ${this.cx} && cy = ${this.cy}`).then(rec => {
-      console.log(rec);
+    //TODO - handle database subscribe
+    if (!this.id) {
+      let rec;
+      try {
+        rec = await db.ctx.collection("chunks").getFirstListItem(`cx = ${this.cx} && cy = ${this.cy}`);
+      } catch (ex) {
+        //empty chunks are not instantiated in the database, and are created as content is needed
+        return;
+      }
       this._src = rec.src;
       this._binFromSrc();
       this.id = rec.id;
-      db.ctx.collection("chunks").subscribe(rec.id, data => {
-        // console.log("Changed", data);
-        this._src = data.record.src;
-        this._binFromSrc();
-      });
-    }).catch(ex => {
-      //empty chunks are not instantiated in the database, and are created as content is needed
+    }
+    db.ctx.collection("chunks").subscribe(this.id, data => {
+      // console.log("Changed", data);
+      this._src = data.record.src;
+      this._binFromSrc();
     });
+  }
+  _send() {
+    this._needsSent = false;
+    db.ctx.collection("chunks").update(this.id, {
+      src: this._src
+    });
+    this._sendTimeLast = performance.now();
+  }
+  trySend() {
+    if (!this.id) {
+      db.ctx.collection("chunks").create({
+        cx: this.cx,
+        cy: this.cy,
+        src: this._src
+      });
+    } else {
+      if (performance.now() - this._sendTimeLast < TextChunk.sendTimeMin) return;
+      this._send();
+    }
   }
 }
 TextChunk.CHAR_HEIGHT = 8;
 TextChunk.CHAR_WIDTH = 16;
+TextChunk.sendTimeMin = 100;
 TextChunk.tracked = new Map();

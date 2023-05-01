@@ -2,7 +2,7 @@
 import { Object2D, Vec2 } from "@repcomm/scenario2d";
 import { exponent, UIBuilder } from "@roguecircuitry/htmless";
 import { Cursor } from "./cursor.js";
-import { TextChunk } from "./textchunk.js";
+import { ChunkJson, TextChunk } from "./textchunk.js";
 
 import { db } from "./db.js";
 
@@ -227,19 +227,36 @@ async function main() {
   }
 
   function populateVisibleChunks () {
+    //loop over rendered chunks
     for (let [index, ch] of TextChunk.tracked) {
-      if (isChunkVisible(ch.cx, ch.cy)) continue;
-      console.log("unloading", ch.cx, ch.cy);
+      //check if its visible
+      if (isChunkVisible(ch.cx, ch.cy)) {
+        // if (!ch.id) {
+
+        // }
+        continue;
+      }
+      // console.log("unloading", ch.cx, ch.cy);
       TextChunk.tryUnload(ch.cx, ch.cy);
     }
     loopVisibleChunks((c)=>{
       let ch = TextChunk.tryLoad(c.x, c.y);
-      if (ch) {
-        scene.add(ch);
-        console.log("loading", c.x, c.y);
-      }
+      if (!ch) return;
+      scene.add(ch);
+      // console.log("loading", c.x, c.y);
     })
   }
+
+  db.ctx.collection("chunks").subscribe<ChunkJson>("*", (data)=>{
+    let { cx, cy, id, src } = data.record;
+    let ch = TextChunk.getLoaded(cx, cy);
+    if (!ch) return;
+    
+    ch._src = src;
+    ch._binFromSrc();
+    ch.subscribe(id);
+
+  });
 
   setInterval(()=>{
     populateVisibleChunks();
@@ -260,6 +277,8 @@ async function main() {
     const idx = TextChunk._2dTo1d(column, row, TextChunk.CHAR_WIDTH);
     chunk._bin[idx] = ch.charCodeAt(0);
     chunk._srcFromBin();
+
+    chunk.trySend();
   }
 
   const keyDownHandler = (evt: {key: string})=>{
@@ -283,8 +302,8 @@ async function main() {
         cursor.newLine();
         break;
       case "Backspace":
-        tryType(cursor.tx, cursor.ty, " ");
         cursor.addTextPos(-1, 0, true);
+        tryType(cursor.tx, cursor.ty, " ");
         //TODO - handle backspace
         break;
       case "Spacebar":

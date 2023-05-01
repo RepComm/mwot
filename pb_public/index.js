@@ -193,19 +193,39 @@ async function main() {
     }
   }
   function populateVisibleChunks() {
+    //loop over rendered chunks
     for (let [index, ch] of TextChunk.tracked) {
-      if (isChunkVisible(ch.cx, ch.cy)) continue;
-      console.log("unloading", ch.cx, ch.cy);
+      //check if its visible
+      if (isChunkVisible(ch.cx, ch.cy)) {
+        // if (!ch.id) {
+
+        // }
+        continue;
+      }
+      // console.log("unloading", ch.cx, ch.cy);
       TextChunk.tryUnload(ch.cx, ch.cy);
     }
     loopVisibleChunks(c => {
       let ch = TextChunk.tryLoad(c.x, c.y);
-      if (ch) {
-        scene.add(ch);
-        console.log("loading", c.x, c.y);
-      }
+      if (!ch) return;
+      scene.add(ch);
+      // console.log("loading", c.x, c.y);
     });
   }
+
+  db.ctx.collection("chunks").subscribe("*", data => {
+    let {
+      cx,
+      cy,
+      id,
+      src
+    } = data.record;
+    let ch = TextChunk.getLoaded(cx, cy);
+    if (!ch) return;
+    ch._src = src;
+    ch._binFromSrc();
+    ch.subscribe(id);
+  });
   setInterval(() => {
     populateVisibleChunks();
   }, 1000);
@@ -222,6 +242,7 @@ async function main() {
     const idx = TextChunk._2dTo1d(column, row, TextChunk.CHAR_WIDTH);
     chunk._bin[idx] = ch.charCodeAt(0);
     chunk._srcFromBin();
+    chunk.trySend();
   }
   const keyDownHandler = evt => {
     const {
@@ -246,8 +267,8 @@ async function main() {
         cursor.newLine();
         break;
       case "Backspace":
-        tryType(cursor.tx, cursor.ty, " ");
         cursor.addTextPos(-1, 0, true);
+        tryType(cursor.tx, cursor.ty, " ");
         //TODO - handle backspace
         break;
       case "Spacebar":

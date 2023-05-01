@@ -11,6 +11,7 @@ export const db = {
   init () {
     db.url = `${window.location.protocol}//${window.location.hostname}:${window.location.port}`;
     db.ctx = new PocketBase(db.url);
+    db.ctx.autoCancellation(false);
   },
   isLoggedIn () {
     return db.ctx.authStore.isValid;
