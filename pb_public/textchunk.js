@@ -157,7 +157,7 @@ export class TextChunk extends Object2D {
         src: this._src
       });
     } else {
-      if (performance.now() - this._sendTimeLast < TextChunk.sendTimeMin) return;
+      // if (performance.now() - this._sendTimeLast < TextChunk.sendTimeMin) return;
       this._send();
     }
   }

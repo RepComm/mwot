@@ -86,9 +86,11 @@ async function main() {
     mobileCapableTypeArea.value = "";
 
     for (let i=0; i<v.length; i++) {
-      keyDownHandler({
-        key: v[i]
-      });
+      setTimeout(()=>{
+        keyDownHandler({
+          key: v[i]
+        });
+      }, 150 * i);
     }
   })
   .on("click", (evt)=>{
@@ -109,7 +111,7 @@ async function main() {
   let fps = 0;
 
   let chunk = TextChunk.tryLoad(0, 0);
-  chunk._src = "Hey Whats up Multiple lines! A really really long line Etc";
+  // chunk._src = " ";
   scene.add(chunk);
 
   let viewWidth = TextChunk.CHAR_WIDTH * 2;
