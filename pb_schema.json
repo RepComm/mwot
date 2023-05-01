@@ -1,0 +1,217 @@
+[
+  {
+    "id": "6xvpfvfa6nr2hfs",
+    "name": "cursors",
+    "type": "base",
+    "system": false,
+    "schema": [
+      {
+        "id": "caxioqbf",
+        "name": "tx",
+        "type": "number",
+        "system": false,
+        "required": false,
+        "options": {
+          "min": null,
+          "max": null
+        }
+      },
+      {
+        "id": "xj746ehf",
+        "name": "ty",
+        "type": "number",
+        "system": false,
+        "required": false,
+        "options": {
+          "min": null,
+          "max": null
+        }
+      }
+    ],
+    "indexes": [],
+    "listRule": null,
+    "viewRule": null,
+    "createRule": null,
+    "updateRule": null,
+    "deleteRule": null,
+    "options": {}
+  },
+  {
+    "id": "_pb_users_auth_",
+    "name": "users",
+    "type": "auth",
+    "system": false,
+    "schema": [
+      {
+        "id": "users_name",
+        "name": "name",
+        "type": "text",
+        "system": false,
+        "required": false,
+        "options": {
+          "min": null,
+          "max": null,
+          "pattern": ""
+        }
+      },
+      {
+        "id": "users_avatar",
+        "name": "avatar",
+        "type": "file",
+        "system": false,
+        "required": false,
+        "options": {
+          "maxSelect": 1,
+          "maxSize": 5242880,
+          "mimeTypes": [
+            "image/jpeg",
+            "image/png",
+            "image/svg+xml",
+            "image/gif",
+            "image/webp"
+          ],
+          "thumbs": null,
+          "protected": false
+        }
+      },
+      {
+        "id": "3c5dwqdx",
+        "name": "cursors",
+        "type": "relation",
+        "system": false,
+        "required": false,
+        "options": {
+          "collectionId": "6xvpfvfa6nr2hfs",
+          "cascadeDelete": false,
+          "minSelect": null,
+          "maxSelect": null,
+          "displayFields": []
+        }
+      }
+    ],
+    "indexes": [],
+    "listRule": "id = @request.auth.id",
+    "viewRule": "id = @request.auth.id",
+    "createRule": "",
+    "updateRule": "id = @request.auth.id",
+    "deleteRule": "id = @request.auth.id",
+    "options": {
+      "allowEmailAuth": true,
+      "allowOAuth2Auth": true,
+      "allowUsernameAuth": true,
+      "exceptEmailDomains": null,
+      "manageRule": null,
+      "minPasswordLength": 8,
+      "onlyEmailDomains": null,
+      "requireEmail": false
+    }
+  },
+  {
+    "id": "trieto883ded5dp",
+    "name": "chats",
+    "type": "base",
+    "system": false,
+    "schema": [
+      {
+        "id": "oktycw9d",
+        "name": "from",
+        "type": "relation",
+        "system": false,
+        "required": true,
+        "options": {
+          "collectionId": "_pb_users_auth_",
+          "cascadeDelete": false,
+          "minSelect": null,
+          "maxSelect": 1,
+          "displayFields": [
+            "name"
+          ]
+        }
+      },
+      {
+        "id": "98aumwb9",
+        "name": "to",
+        "type": "relation",
+        "system": false,
+        "required": false,
+        "options": {
+          "collectionId": "_pb_users_auth_",
+          "cascadeDelete": false,
+          "minSelect": null,
+          "maxSelect": 3,
+          "displayFields": []
+        }
+      },
+      {
+        "id": "yogximuw",
+        "name": "message",
+        "type": "text",
+        "system": false,
+        "required": true,
+        "options": {
+          "min": null,
+          "max": 256,
+          "pattern": ""
+        }
+      }
+    ],
+    "indexes": [],
+    "listRule": "@request.auth.id != \"\" && (@request.auth.id = from.id || @request.auth.id = to.id )",
+    "viewRule": "@request.auth.id != \"\" && (@request.auth.id = from.id || @request.auth.id = to.id )",
+    "createRule": "@request.auth.id != \"\" && @request.auth.id = from.id",
+    "updateRule": "@request.auth.id != \"\" && @request.auth.id = from.id",
+    "deleteRule": null,
+    "options": {}
+  },
+  {
+    "id": "w9z8r0sw2fbx7x1",
+    "name": "chunks",
+    "type": "base",
+    "system": false,
+    "schema": [
+      {
+        "id": "xmstuov3",
+        "name": "src",
+        "type": "text",
+        "system": false,
+        "required": false,
+        "options": {
+          "min": null,
+          "max": 128,
+          "pattern": ""
+        }
+      },
+      {
+        "id": "sau7vx2o",
+        "name": "cx",
+        "type": "number",
+        "system": false,
+        "required": false,
+        "options": {
+          "min": null,
+          "max": null
+        }
+      },
+      {
+        "id": "pokiiq7g",
+        "name": "cy",
+        "type": "number",
+        "system": false,
+        "required": false,
+        "options": {
+          "min": null,
+          "max": null
+        }
+      }
+    ],
+    "indexes": [
+      "CREATE UNIQUE INDEX `idx_6wJ6twA` ON `chunks` (\n  `cx`,\n  `cy`\n)"
+    ],
+    "listRule": "@request.auth.id != \"\"",
+    "viewRule": "@request.auth.id != \"\"",
+    "createRule": "@request.auth.id != \"\"",
+    "updateRule": "@request.auth.id != \"\"",
+    "deleteRule": null,
+    "options": {}
+  }
+]
