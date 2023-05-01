@@ -51,15 +51,21 @@ async function main() {
     flexDirection: "column"
   }).mount(container).e;
   const menuBar = ui.create("div", "menubar").mount(hSplit).e;
-  const authButton = ui.create("button", "auth").textContent("Authenticate").mount(menuBar).on("click", () => {
+  const authButton = ui.create("button", "auth").mount(menuBar).on("click", () => {
     if (db.isLoggedIn()) {
-      alert("already logged in");
-      return;
+      db.ctx.authStore.clear();
+      alert("Logged out");
+    } else {
+      let uname = prompt("Enter username");
+      let upass = prompt("Enter password");
+      db.login(uname, upass);
     }
-    let uname = prompt("Enter username");
-    let upass = prompt("Enter password");
-    db.login(uname, upass);
+    updateAuthButton();
   });
+  function updateAuthButton() {
+    authButton.textContent(db.isLoggedIn() ? "Logout" : "Login");
+  }
+  updateAuthButton();
   const canvas = ui.create("canvas").style({
     flex: "20",
     minWidth: "0",
@@ -134,16 +140,6 @@ async function main() {
   const mPosText = new Vec2();
   /**Mouse position in chunk index space*/
   const mPosChunk = new Vec2();
-  const r = {
-    x: 0,
-    y: 0,
-    w: 0,
-    h: 0
-  };
-  scene.onRenderSelf = ctx => {
-    ctx.strokeRect(r.x * TextChunk.CHAR_WIDTH * TextChunk.metricsMonoWidth, r.y * TextChunk.CHAR_HEIGHT * TextChunk.metricsLineHeight, r.w, r.h);
-    return this;
-  };
   ui.ref(canvas).on("click", evt => {
     canvasFocus = true;
     //get offset of mouse from canvas top left pixels
@@ -156,12 +152,6 @@ async function main() {
 
     //set our cursor position
     cursor.setTextPos(mPosText.x, mPosText.y, true);
-
-    //demo render code for chunk border
-    r.x = mPosChunk.x;
-    r.y = mPosChunk.y;
-    r.w = TextChunk.CHAR_WIDTH * TextChunk.metricsMonoWidth;
-    r.h = TextChunk.CHAR_HEIGHT * TextChunk.metricsLineHeight;
   });
   function isChunkVisible(cx, cy) {
     const p = loopVisibleChunksPos;
@@ -226,7 +216,7 @@ async function main() {
     if (!ch) return;
     ch._src = src;
     ch._binFromSrc();
-    ch.subscribe(id);
+    if (!ch.id) ch.subscribe(id);
   });
   setInterval(() => {
     populateVisibleChunks();

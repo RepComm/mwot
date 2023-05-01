@@ -1,12 +1,14 @@
 
-import { Object2D, Vec2 } from "@repcomm/scenario2d";
+import { Object2D } from "@repcomm/scenario2d";
 import { db } from "./db.js";
+import { UserJson } from "./user.js";
 
 export interface ChunkJson {
   id: string;
   src: string;
   cx: number;
   cy: number;
+  editorid: string;
 }
 
 const td = new TextDecoder();
@@ -49,10 +51,6 @@ export class TextChunk extends Object2D {
   cx: number;
   cy: number;
 
-  _needsSent: boolean;
-  _sendTimeLast: number;
-  static sendTimeMin: number;
-
   _bin: Uint8Array;
 
   _binClear () {
@@ -60,8 +58,6 @@ export class TextChunk extends Object2D {
   }
   _binInit () {
     this._bin = new Uint8Array(TextChunk.CHAR_WIDTH * TextChunk.CHAR_HEIGHT);
-    this._sendTimeLast = performance.now();
-    this._needsSent = false;
     this._binClear();
   }
   _srcFromBin () {
@@ -104,6 +100,12 @@ export class TextChunk extends Object2D {
   }
   onRenderSelf(ctx: CanvasRenderingContext2D): this {
     
+    if (this.id) ctx.strokeRect(
+      0, 0,
+      TextChunk.CHAR_WIDTH * TextChunk.metricsMonoWidth,
+      TextChunk.CHAR_HEIGHT * TextChunk.metricsLineHeight
+    );
+
     let x = 0;
     let y = 0;
     if (!TextChunk.metrics) {
@@ -126,9 +128,6 @@ export class TextChunk extends Object2D {
       // y = Math.floor(TextChunk._1dTo2dY(i, TextChunk.CHAR_WIDTH) * TextChunk.metricsLineHeight);
       ctx.fillText(ch, x, y);
     }
-
-    if (this._needsSent) this.trySend();
-
     return this;
   }
   static isLoaded (cx: number, cy: number) {
@@ -177,32 +176,44 @@ export class TextChunk extends Object2D {
       this.id = rec.id;
     }
     db.ctx.collection("chunks").subscribe<ChunkJson>(this.id, (data)=>{
-      // console.log("Changed", data);
+      // don't bother updating if our own user made the change
+      console.log(this.id, "updated");
+      if (data.record.editorid === db.ctx.authStore.model.id) {
+        // console.log("update received that we produced");
+        return;
+      }
+
       this._src = data.record.src;
       this._binFromSrc();
     });
   }
   _send () {
-    this._needsSent = false;
+    // console.log(this.id);
     db.ctx.collection("chunks").update<ChunkJson>(this.id, {
-      src: this._src
+      src: this._src,
+      editorid: db.ctx.authStore.model.id
+    }).catch((reason)=>{
+      console.warn(reason);
     });
-    this._sendTimeLast = performance.now();
   }
   trySend () {
+    console.log("trySend");
     if (!this.id) {
       db.ctx.collection("chunks").create<ChunkJson>({
         cx: this.cx,
         cy: this.cy,
-        src: this._src
+        src: this._src,
+        editorid: db.ctx.authStore.model.id
+      }).then((rec)=>{
+        this.id = rec.id;
+      }).catch((reason)=>{
+        console.warn(reason);
       });
     } else {
-      // if (performance.now() - this._sendTimeLast < TextChunk.sendTimeMin) return;
       this._send();
     }
   }
 }
 TextChunk.CHAR_HEIGHT = 8;
 TextChunk.CHAR_WIDTH = 16;
-TextChunk.sendTimeMin = 100;
 TextChunk.tracked = new Map();
