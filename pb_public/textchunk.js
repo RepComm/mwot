@@ -119,6 +119,7 @@ export class TextChunk extends Object2D {
     if (this.id) db.ctx.collection("chunks").unsubscribe(this.id);
   }
   async subscribe(id = undefined) {
+    if (this.id) return; //why subscribe twice..
     if (id !== undefined) this.id = id;
 
     //TODO - handle database subscribe
@@ -136,7 +137,6 @@ export class TextChunk extends Object2D {
     }
     db.ctx.collection("chunks").subscribe(this.id, data => {
       // don't bother updating if our own user made the change
-      console.log(this.id, "updated");
       if (data.record.editorid === db.ctx.authStore.model.id) {
         // console.log("update received that we produced");
         return;
@@ -146,7 +146,6 @@ export class TextChunk extends Object2D {
     });
   }
   _send() {
-    // console.log(this.id);
     db.ctx.collection("chunks").update(this.id, {
       src: this._src,
       editorid: db.ctx.authStore.model.id
@@ -155,7 +154,6 @@ export class TextChunk extends Object2D {
     });
   }
   trySend() {
-    console.log("trySend");
     if (!this.id) {
       db.ctx.collection("chunks").create({
         cx: this.cx,

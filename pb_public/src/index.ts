@@ -227,14 +227,12 @@ async function main() {
         // }
         continue;
       }
-      // console.log("unloading", ch.cx, ch.cy);
       TextChunk.tryUnload(ch.cx, ch.cy);
     }
     loopVisibleChunks((c)=>{
       let ch = TextChunk.tryLoad(c.x, c.y);
       if (!ch) return;
       scene.add(ch);
-      // console.log("loading", c.x, c.y);
     })
   }
 
@@ -245,7 +243,9 @@ async function main() {
     
     ch._src = src;
     ch._binFromSrc();
-    if (!ch.id) ch.subscribe(id); //need to make sure it hasn't been subscribe to before!
+    
+    //this won't do anything if chunk has been subscribe to already
+    ch.subscribe(id);
 
   });
 
@@ -274,7 +274,6 @@ async function main() {
 
   const keyDownHandler = (evt: {key: string})=>{
     const { key } = evt;
-    // console.log(key);
 
     switch (key) {
       case "ArrowRight":

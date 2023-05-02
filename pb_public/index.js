@@ -194,17 +194,14 @@ async function main() {
         // }
         continue;
       }
-      // console.log("unloading", ch.cx, ch.cy);
       TextChunk.tryUnload(ch.cx, ch.cy);
     }
     loopVisibleChunks(c => {
       let ch = TextChunk.tryLoad(c.x, c.y);
       if (!ch) return;
       scene.add(ch);
-      // console.log("loading", c.x, c.y);
     });
   }
-
   db.ctx.collection("chunks").subscribe("*", data => {
     let {
       cx,
@@ -216,7 +213,9 @@ async function main() {
     if (!ch) return;
     ch._src = src;
     ch._binFromSrc();
-    if (!ch.id) ch.subscribe(id);
+
+    //this won't do anything if chunk has been subscribe to already
+    ch.subscribe(id);
   });
   setInterval(() => {
     populateVisibleChunks();
@@ -240,8 +239,6 @@ async function main() {
     const {
       key
     } = evt;
-    // console.log(key);
-
     switch (key) {
       case "ArrowRight":
         cursor.addTextPos(1, 0);
